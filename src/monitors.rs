@@ -4,6 +4,7 @@ use std::ptr;
 use winapi::{
     shared::basetsd::UINT32,
     um::{
+        lowlevelmonitorconfigurationapi::{GetVCPFeatureAndVCPFeatureReply, SetVCPFeature},
         physicalmonitorenumerationapi::{
             GetNumberOfPhysicalMonitorsFromHMONITOR, GetPhysicalMonitorsFromHMONITOR,
         },
@@ -18,10 +19,38 @@ use winapi::{
     },
 };
 
+const VCP_POWER_MODE: u8 = 0xd6;
+const VCP_POWER_MODE_NONE: u32 = 0x00;
+const VCP_POWER_MODE_ON: u32 = 0x01;
+const VCP_POWER_MODE_OFF: u32 = 0x05;
+
+#[derive(Copy, Clone, Debug)]
+pub enum PowerMode {
+    On,
+    Off,
+}
+
+impl PowerMode {
+    fn from_vcp_code(value: u32) -> PowerMode {
+        match value {
+            VCP_POWER_MODE_ON => PowerMode::On,
+            VCP_POWER_MODE_NONE | VCP_POWER_MODE_OFF => PowerMode::Off,
+            _ => panic!(format!("unsupported power mode")),
+        }
+    }
+
+    fn vcp_code(&self) -> u32 {
+        match self {
+            PowerMode::On => VCP_POWER_MODE_ON,
+            PowerMode::Off => VCP_POWER_MODE_OFF,
+        }
+    }
+}
+
 pub struct Monitor {
     id: i32,
     name: String,
-    _handle: HANDLE,
+    handle: HANDLE,
 }
 
 impl Monitor {
@@ -31,6 +60,26 @@ impl Monitor {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn power_mode(&self) -> PowerMode {
+        let mut value = 0;
+        unsafe {
+            GetVCPFeatureAndVCPFeatureReply(
+                self.handle,
+                VCP_POWER_MODE,
+                ptr::null_mut(),
+                &mut value,
+                ptr::null_mut(),
+            );
+        }
+        PowerMode::from_vcp_code(value)
+    }
+
+    pub fn set_power_mode(&self, mode: PowerMode) {
+        unsafe {
+            SetVCPFeature(self.handle, VCP_POWER_MODE, mode.vcp_code());
+        }
     }
 }
 
@@ -49,7 +98,7 @@ pub fn get_monitors() -> Vec<Monitor> {
         monitors.push(Monitor {
             id,
             name: device.friendly_name,
-            _handle: monitor.handle,
+            handle: monitor.handle,
         });
     }
 
@@ -140,7 +189,7 @@ fn get_device_map() -> Vec<([u16; 128], [u16; 32])> {
             let name = device.DeviceName.to_owned();
             if EnumDisplayDevicesW(name.as_ptr(), 0, &mut device, 1) != 0 {
                 map.push((device.DeviceID.to_owned(), device.DeviceName.to_owned()));
-            };
+            }
 
             i += 1
         }

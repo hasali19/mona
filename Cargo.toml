@@ -10,6 +10,7 @@ version = "0.1.0"
 clap   = "2.33"
 winapi = { version = "0.3.9", features = [
     "basetsd",
+    "lowlevelmonitorconfigurationapi",
     "physicalmonitorenumerationapi",
     "wingdi",
     "winnt",
