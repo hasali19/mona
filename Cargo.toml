@@ -7,3 +7,11 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap   = "2.33"
+winapi = { version = "0.3.9", features = [
+    "basetsd",
+    "physicalmonitorenumerationapi",
+    "wingdi",
+    "winnt",
+    "winuser",
+] }
