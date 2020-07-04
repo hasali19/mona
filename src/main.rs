@@ -6,7 +6,7 @@ use colored::Colorize;
 use monitors::PowerMode;
 
 fn main() {
-    let matches = App::new("monitor_control")
+    let matches = App::new(env!("CARGO_PKG_NAME"))
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
         .subcommand(SubCommand::with_name("list").about("Lists all connected monitors"))
