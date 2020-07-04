@@ -1,6 +1,8 @@
 mod monitors;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use colored::Colorize;
+
 use monitors::PowerMode;
 
 fn main() {
@@ -48,12 +50,27 @@ fn list_monitors() {
         return;
     }
 
-    println!("\n{} monitor(s) found:\n", monitors.len());
-    println!("    id | name");
-    println!("    --------------------------------------");
+    println!(
+        "\n{} {}\n",
+        monitors.len().to_string().yellow(),
+        "monitor(s) found:".yellow()
+    );
+
+    println!("    {} {} {}", "id", "|".bright_black(), "name");
+    println!(
+        "{}",
+        "    --------------------------------------".bright_black()
+    );
 
     for monitor in monitors {
-        println!("    {:2} | {}", monitor.id(), monitor.name());
+        let id = monitor.id().to_string();
+        let name = monitor.name().to_string();
+        let separator = "|".bright_black();
+
+        match monitor.power_mode() {
+            PowerMode::On => println!("    {:2} {} {}", id.green(), separator, name.green()),
+            PowerMode::Off => println!("    {:2} {} {}", id.red(), separator, name.red()),
+        };
     }
 }
 
@@ -71,4 +88,6 @@ fn set_power_mode(matches: &ArgMatches, power_mode: PowerMode) {
             .expect("no monitor found with the given id");
         monitor.set_power_mode(power_mode);
     }
+
+    println!("\nOk 👍");
 }
