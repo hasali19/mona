@@ -134,8 +134,8 @@ fn get_display_devices() -> Vec<DisplayDevice> {
             ptr::null_mut(),
         );
 
-        paths.set_len(paths.capacity());
-        modes.set_len(modes.capacity());
+        paths.set_len(num_paths as usize);
+        modes.set_len(num_modes as usize);
     }
 
     let mut devices = vec![];
