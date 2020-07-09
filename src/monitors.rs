@@ -2,11 +2,15 @@ use std::mem;
 use std::ptr;
 
 use winapi::{
-    shared::basetsd::UINT32,
+    shared::{
+        basetsd::UINT32,
+        windef::{HDC, HMONITOR, RECT},
+    },
     um::{
         lowlevelmonitorconfigurationapi::{GetVCPFeatureAndVCPFeatureReply, SetVCPFeature},
         physicalmonitorenumerationapi::{
             GetNumberOfPhysicalMonitorsFromHMONITOR, GetPhysicalMonitorsFromHMONITOR,
+            PHYSICAL_MONITOR,
         },
         wingdi::{
             DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME, DISPLAYCONFIG_DEVICE_INFO_HEADER,
@@ -174,8 +178,12 @@ fn get_display_devices() -> Vec<DisplayDevice> {
     devices
 }
 
-fn get_device_map() -> Vec<([u16; 128], [u16; 32])> {
-    let mut map = Vec::new();
+// We just use a vec here since there are probably
+// very few items (< 5)
+type DeviceMap = Vec<([u16; 128], [u16; 32])>;
+
+fn get_device_map() -> DeviceMap {
+    let mut map = DeviceMap::new();
 
     let mut device = unsafe {
         let mut device: DISPLAY_DEVICEW = mem::zeroed();
@@ -220,39 +228,69 @@ fn get_display_monitors() -> Vec<DisplayMonitor> {
 }
 
 unsafe extern "system" fn enum_monitor_proc(
-    hmonitor: winapi::shared::windef::HMONITOR,
-    _hdc: winapi::shared::windef::HDC,
-    _rect: *mut winapi::shared::windef::RECT,
+    hmonitor: HMONITOR,
+    _hdc: HDC,
+    _rect: *mut RECT,
     data: isize,
 ) -> i32 {
     let monitors = data as *mut Vec<DisplayMonitor>;
 
-    let mut info: MONITORINFOEXW = mem::zeroed();
-    info.cbSize = mem::size_of::<MONITORINFOEXW>() as u32;
+    let info = match get_monitor_info(hmonitor) {
+        Some(info) => info,
+        None => {
+            eprint!("failed to get monitor info for hmonitor {:?}", hmonitor);
+            return 1;
+        }
+    };
 
-    if GetMonitorInfoW(hmonitor, (&mut info as *mut MONITORINFOEXW).cast()) == 0 {
-        panic!("failed to get monitor info");
-    }
-
-    let mut count = 0;
-    if GetNumberOfPhysicalMonitorsFromHMONITOR(hmonitor, &mut count) == 0 {
-        panic!("failed to get number of physical monitors");
-    }
-
-    let mut physical_monitors = Vec::with_capacity(count as usize);
-    if GetPhysicalMonitorsFromHMONITOR(hmonitor, count, physical_monitors.as_mut_ptr()) == 0 {
-        panic!("failed to get physical monitors");
-    }
-    physical_monitors.set_len(physical_monitors.capacity());
+    let physical_monitors = match get_physical_monitors(hmonitor) {
+        Some(v) => v,
+        None => {
+            eprintln!("no physical monitors found for hmonitor {:?}", hmonitor);
+            return 1;
+        }
+    };
 
     for monitor in physical_monitors {
         (*monitors).push(DisplayMonitor {
             device_name: utf16_nt_to_string(&info.szDevice),
             handle: monitor.hPhysicalMonitor,
-        });
+        })
     }
 
     1
+}
+
+fn get_monitor_info(hmonitor: HMONITOR) -> Option<MONITORINFOEXW> {
+    let mut info: MONITORINFOEXW = unsafe { mem::zeroed() };
+    info.cbSize = mem::size_of::<MONITORINFOEXW>() as u32;
+
+    unsafe {
+        if GetMonitorInfoW(hmonitor, (&mut info as *mut MONITORINFOEXW).cast()) == 0 {
+            return None;
+        }
+    }
+
+    Some(info)
+}
+
+fn get_physical_monitors(hmonitor: HMONITOR) -> Option<Vec<PHYSICAL_MONITOR>> {
+    let mut count = 0;
+    unsafe {
+        if GetNumberOfPhysicalMonitorsFromHMONITOR(hmonitor, &mut count) == 0 {
+            return None;
+        }
+    }
+
+    let mut monitors = Vec::with_capacity(count as usize);
+    unsafe {
+        if GetPhysicalMonitorsFromHMONITOR(hmonitor, count, monitors.as_mut_ptr()) == 0 {
+            return None;
+        }
+        monitors.set_len(count as usize);
+    }
+
+    Some(monitors)
 }
 
 /// Converts a null terminated buffer of utf16 characters to a `String`.
