@@ -1,4 +1,5 @@
 mod monitors;
+mod server;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use colored::Colorize;
@@ -9,6 +10,7 @@ fn main() {
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
+        .subcommand(SubCommand::with_name("run").about("Runs the command server"))
         .subcommand(SubCommand::with_name("list").about("Lists all connected monitors"))
         .subcommand(
             SubCommand::with_name("on")
@@ -35,6 +37,7 @@ fn main() {
         .get_matches();
 
     match matches.subcommand() {
+        ("run", _) => server::run().unwrap(),
         ("list", _) => list_monitors(),
         ("on", Some(matches)) => set_power_mode(matches, PowerMode::On),
         ("off", Some(matches)) => set_power_mode(matches, PowerMode::Off),
@@ -80,13 +83,13 @@ fn set_power_mode(matches: &ArgMatches, power_mode: PowerMode) {
     if id == "all" {
         monitors
             .iter()
-            .for_each(|monitor| monitor.set_power_mode(power_mode));
+            .for_each(|monitor| monitor.set_power_mode(power_mode).unwrap());
     } else {
         let id: usize = id.parse().unwrap();
         let monitor = monitors
             .get(id - 1)
             .expect("no monitor found with the given id");
-        monitor.set_power_mode(power_mode);
+        monitor.set_power_mode(power_mode).unwrap();
     }
 
     println!("\nOk 👍");
