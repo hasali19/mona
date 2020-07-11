@@ -1,3 +1,4 @@
+mod db;
 mod monitors;
 mod server;
 

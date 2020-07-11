@@ -2,12 +2,14 @@ use monitors::PowerMode;
 use std::error::Error;
 use std::net::UdpSocket;
 
+use crate::db::Db;
 use crate::monitors;
 
 pub fn run() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
     let socket = UdpSocket::bind("0.0.0.0:7890")?;
+    let mut db = Db::new();
     let mut buffer = [0; 8];
 
     log::info!("server running on port 7890...");
@@ -32,8 +34,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         };
 
         let res = match cmd {
-            "list" => list(),
-            "set" => set_power_mode(args),
+            "list" => list(&db),
+            "set" => set_power_mode(&db, args),
+            "refresh" => refresh(&mut db),
             _ => {
                 log::error!("invalid command: {}({})", cmd, args.join(","));
                 continue;
@@ -53,11 +56,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     }
 }
 
-fn list() -> Result<String, Box<dyn Error>> {
-    let monitors = monitors::get_monitors();
+fn list(db: &Db) -> Result<String, Box<dyn Error>> {
     let mut response = String::new();
 
-    for monitor in monitors {
+    for monitor in db.iter() {
         response.push_str(&format!(
             "{};{};{}\n",
             monitor.id(),
@@ -69,7 +71,7 @@ fn list() -> Result<String, Box<dyn Error>> {
     Ok(response)
 }
 
-fn set_power_mode(args: Vec<&str>) -> Result<String, Box<dyn Error>> {
+fn set_power_mode(db: &Db, args: Vec<&str>) -> Result<String, Box<dyn Error>> {
     if args.len() != 2 {
         Err(format!(
             "invalid arguments ({}): {}",
@@ -79,16 +81,19 @@ fn set_power_mode(args: Vec<&str>) -> Result<String, Box<dyn Error>> {
     }
 
     let id = args[0].parse()?;
-    let monitors = monitors::get_monitors();
-    let monitor = monitors
-        .iter()
-        .find(|m| m.id() == id)
+    let monitor = db
+        .get(id)
         .ok_or_else(|| format!("no monitor found with id {}", id))?;
 
     let mode = args[1];
     let mode = decode_power_mode(mode).ok_or_else(|| format!("invalid power mode: {}", mode))?;
 
     monitor.set_power_mode(mode).map(|_| "ok".to_owned())
+}
+
+fn refresh(db: &mut Db) -> Result<String, Box<dyn Error>> {
+    db.refresh();
+    Ok("ok".to_owned())
 }
 
 fn encode_power_mode(mode: PowerMode) -> char {
