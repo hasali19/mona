@@ -2,11 +2,13 @@ use monitors::PowerMode;
 use std::error::Error;
 use std::net::UdpSocket;
 
+use env_logger::Env;
+
 use crate::db::Db;
 use crate::monitors;
 
 pub fn run() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let socket = UdpSocket::bind("0.0.0.0:7890")?;
     let mut db = Db::new();
