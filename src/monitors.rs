@@ -40,7 +40,7 @@ impl PowerMode {
         match value {
             VCP_POWER_MODE_ON => PowerMode::On,
             VCP_POWER_MODE_NONE | VCP_POWER_MODE_OFF => PowerMode::Off,
-            _ => panic!(format!("unsupported power mode")),
+            _ => panic!("unsupported power mode"),
         }
     }
 
@@ -86,7 +86,7 @@ impl Monitor {
         if res == 1 {
             Ok(())
         } else {
-            Err("failed to set power mode")?
+            Err("failed to set power mode".into())
         }
     }
 }
@@ -169,7 +169,7 @@ fn get_display_devices() -> Vec<DisplayDevice> {
             let device_path = name.monitorDevicePath;
             let (_, device_name) = device_map
                 .iter()
-                .find(|(id, _)| &id[..] == &device_path[..])
+                .find(|(id, _)| id[..] == device_path[..])
                 .unwrap();
 
             devices.push(DisplayDevice {

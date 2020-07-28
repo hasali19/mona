@@ -60,7 +60,7 @@ fn list_monitors() {
         "monitor(s) found:".yellow()
     );
 
-    println!("    {} {} {}", "id", "|".bright_black(), "name");
+    println!("    id {} name", "|".bright_black());
     println!(
         "{}",
         "    --------------------------------------".bright_black()

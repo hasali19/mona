@@ -50,7 +50,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             Err(e) => {
                 log::error!("{}", e);
                 // TODO: Improve error responses
-                socket.send_to("error".as_bytes(), from).ok();
+                socket.send_to(b"error", from).ok();
             }
         }
     }
@@ -73,11 +73,7 @@ fn list(db: &Db) -> Result<String, Box<dyn Error>> {
 
 fn set_power_mode(db: &Db, args: Vec<&str>) -> Result<String, Box<dyn Error>> {
     if args.len() != 2 {
-        Err(format!(
-            "invalid arguments ({}): {}",
-            args.len(),
-            args.join(",")
-        ))?;
+        return Err(format!("invalid arguments ({}): {}", args.len(), args.join(",")).into());
     }
 
     let id = args[0].parse()?;
