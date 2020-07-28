@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::mem;
 use std::ptr;
 
@@ -80,9 +81,12 @@ impl Monitor {
         PowerMode::from_vcp_code(value)
     }
 
-    pub fn set_power_mode(&self, mode: PowerMode) {
-        unsafe {
-            SetVCPFeature(self.handle, VCP_POWER_MODE, mode.vcp_code());
+    pub fn set_power_mode(&self, mode: PowerMode) -> Result<(), Box<dyn Error>> {
+        let res = unsafe { SetVCPFeature(self.handle, VCP_POWER_MODE, mode.vcp_code()) };
+        if res == 1 {
+            Ok(())
+        } else {
+            Err("failed to set power mode")?
         }
     }
 }
