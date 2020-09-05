@@ -1,6 +1,8 @@
 mod db;
+mod installer;
 mod monitors;
 mod server;
+mod win;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use colored::Colorize;
@@ -35,6 +37,14 @@ fn main() {
                         ),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("install")
+                .about("Installs the scheduled task to start mona on login"),
+        )
+        .subcommand(
+            SubCommand::with_name("uninstall")
+                .about("Removes the scheduled task to start mona on login"),
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -42,6 +52,8 @@ fn main() {
         ("list", _) => list_monitors(),
         ("on", Some(matches)) => set_power_mode(matches, PowerMode::On),
         ("off", Some(matches)) => set_power_mode(matches, PowerMode::Off),
+        ("install", _) => installer::install().unwrap(),
+        ("uninstall", _) => installer::uninstall().unwrap(),
         _ => {}
     }
 }
